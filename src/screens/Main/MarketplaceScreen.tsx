@@ -3,8 +3,7 @@ import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image } from 'react
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
 import { Star, MapPin, Filter } from 'lucide-react-native';
-import { db } from '../../config/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { supabase } from '../../config/supabase';
 
 interface Expert {
     id: string;
@@ -16,11 +15,28 @@ interface Expert {
 }
 
 const MarketplaceScreen = () => {
-    const [experts, setExperts] = useState<Expert[]>([
-        { id: '1', name: 'Dr. Sarah Smith', title: 'Clinical Psychologist', rating: 4.9, price: '$80/session', imageUrl: 'https://via.placeholder.com/100' },
-        { id: '2', name: 'James Wilson', title: 'Career Coach', rating: 4.7, price: '$50/session', imageUrl: 'https://via.placeholder.com/100' },
-        { id: '3', name: 'Emma Brown', title: 'Life Counselor', rating: 4.8, price: '$60/session', imageUrl: 'https://via.placeholder.com/100' },
-    ]);
+    const [experts, setExperts] = useState<Expert[]>([]);
+
+    useEffect(() => {
+        const fetchExperts = async () => {
+            const { data, error } = await supabase
+                .from('experts')
+                .select('*');
+
+            if (data && data.length > 0) {
+                setExperts(data);
+            } else {
+                // Fallback to initial seed if table is empty
+                setExperts([
+                    { id: '1', name: 'Dr. Sarah Smith', title: 'Clinical Psychologist', rating: 4.9, price: '$80/session', imageUrl: 'https://via.placeholder.com/100' },
+                    { id: '2', name: 'James Wilson', title: 'Career Coach', rating: 4.7, price: '$50/session', imageUrl: 'https://via.placeholder.com/100' },
+                    { id: '3', name: 'Emma Brown', title: 'Life Counselor', rating: 4.8, price: '$60/session', imageUrl: 'https://via.placeholder.com/100' },
+                ]);
+            }
+        };
+
+        fetchExperts();
+    }, []);
 
     const renderExpert = ({ item }: { item: Expert }) => (
         <TouchableOpacity style={styles.card}>

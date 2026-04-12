@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
-import { auth, db } from '../../config/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { supabase } from '../../config/supabase';
 
 const LoginScreen = ({ navigation }: any) => {
     const [email, setEmail] = useState('');
@@ -15,14 +13,18 @@ const LoginScreen = ({ navigation }: any) => {
         if (!email || !password) return;
         try {
             if (isLogin) {
-                await signInWithEmailAndPassword(auth, email, password);
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
             } else {
-                const cred = await createUserWithEmailAndPassword(auth, email, password);
-                await setDoc(doc(db, 'users', cred.user.uid), {
-                    email,
-                    createdAt: new Date(),
-                    subscriptionStatus: 'free',
-                });
+                const { data: { user }, error } = await supabase.auth.signUp({ email, password });
+                if (error) throw error;
+                if (user) {
+                    await supabase.from('profiles').insert({
+                        id: user.id,
+                        email,
+                        subscription_status: 'free',
+                    });
+                }
                 navigation.navigate('Onboarding');
             }
         } catch (error: any) {

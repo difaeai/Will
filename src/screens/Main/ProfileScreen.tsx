@@ -3,14 +3,14 @@ import { StyleSheet, Text, View, TouchableOpacity, Switch } from 'react-native';
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
 import { User, Settings, LogOut, CreditCard, Shield } from 'lucide-react-native';
-import { auth } from '../../config/firebase';
+import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 
 const ProfileScreen = ({ navigation }: any) => {
-    const { userData } = useAuth();
+    const { userData, user } = useAuth();
 
     const handleSignOut = () => {
-        auth.signOut();
+        supabase.auth.signOut();
     };
 
     return (

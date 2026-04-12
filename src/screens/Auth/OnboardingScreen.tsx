@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
-import { db, auth } from '../../config/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { supabase } from '../../config/supabase';
 
 const OnboardingScreen = ({ navigation }: any) => {
     const [genderPref, setGenderPref] = useState('');
@@ -19,15 +18,20 @@ const OnboardingScreen = ({ navigation }: any) => {
     };
 
     const handleComplete = async () => {
-        const user = auth.currentUser;
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         try {
-            await updateDoc(doc(db, 'users', user.uid), {
-                ai_gender_preference: genderPref,
-                language,
-                interests: interest,
-                onboardingComplete: true,
-            });
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    ai_gender_preference: genderPref,
+                    language,
+                    interests: interest,
+                    onboarding_complete: true,
+                })
+                .eq('id', user.id);
+
+            if (error) throw error;
             navigation.replace('Main');
         } catch (error) {
             console.error(error);

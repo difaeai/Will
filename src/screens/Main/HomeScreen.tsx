@@ -3,9 +3,26 @@ import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert } from 'rea
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
 import { Mic, MessageCircle, PhoneCall, Smile, Meh, Frown, Sparkles } from 'lucide-react-native';
+import { supabase } from '../../config/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 const HomeScreen = ({ navigation }: any) => {
+    const { user } = useAuth();
     const [mood, setMood] = useState<string | null>(null);
+
+    const updateMood = async (m: string) => {
+        setMood(m);
+        if (user) {
+            try {
+                await supabase
+                    .from('profiles')
+                    .update({ last_mood: m, mood_updated_at: new Date() })
+                    .eq('id', user.id);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    };
 
     const requestCall = () => {
         Alert.alert("AI Call Requested", "Will will call you in 5-10 minutes for a check-in.");
@@ -33,7 +50,7 @@ const HomeScreen = ({ navigation }: any) => {
                             <TouchableOpacity
                                 key={m.label}
                                 style={[styles.moodBtn, mood === m.label && styles.moodBtnActive]}
-                                onPress={() => setMood(m.label)}
+                                onPress={() => updateMood(m.label)}
                             >
                                 {m.icon}
                                 <Text style={[styles.moodLabel, mood === m.label && styles.moodLabelActive]}>{m.label}</Text>

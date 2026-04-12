@@ -3,13 +3,31 @@ import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-nati
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
 import { Check } from 'lucide-react-native';
+import { supabase } from '../../config/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 const SubscriptionScreen = () => {
+    const { user } = useAuth();
     const plans = [
         { title: 'Free', price: '$0', features: ['Daily 10 messages', 'Standard AI agent', 'Community access'] },
         { title: 'Premium', price: '$19.99/mo', features: ['Unlimited messages', 'Real-time voice calls', 'Dedicated career coach', 'Proactive AI calls'], featured: true },
         { title: 'Pro', price: '$49.99/mo', features: ['All Premium features', 'Human expert matching', 'Priority booking', 'Personalized mental health plan'] },
     ];
+
+    const updatePlan = async (plan: string) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ subscription_status: plan.toLowerCase() })
+                .eq('id', user.id);
+            
+            if (error) throw error;
+            alert(`Plan updated to ${plan}!`);
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
     return (
         <GradientBackground style={styles.container}>
@@ -31,7 +49,10 @@ const SubscriptionScreen = () => {
                                 </View>
                             ))}
                         </View>
-                        <TouchableOpacity style={[styles.button, plan.featured && styles.featuredButton]}>
+                        <TouchableOpacity 
+                            style={[styles.button, plan.featured && styles.featuredButton]}
+                            onPress={() => updatePlan(plan.title)}
+                        >
                             <Text style={styles.buttonText}>Select Plan</Text>
                         </TouchableOpacity>
                     </View>

@@ -3,8 +3,7 @@ import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Keyboard
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
 import { Send, User as UserIcon, Bot } from 'lucide-react-native';
-import { db } from '../../config/firebase';
-import { addDoc, collection, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 
 interface Message {
@@ -23,21 +22,35 @@ const ChatScreen = () => {
     useEffect(() => {
         if (!user) return;
 
-        const q = query(
-            collection(db, 'messages'),
-            where('userId', '==', user.uid),
-            orderBy('timestamp', 'asc')
-        );
+        // Fetch initial messages
+        const fetchMessages = async () => {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('timestamp', { ascending: true });
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const msgs: Message[] = [];
-            snapshot.forEach((doc) => {
-                msgs.push({ id: doc.id, ...doc.data() } as Message);
-            });
-            setMessages(msgs);
-        });
+            if (data) setMessages(data);
+        };
 
-        return unsubscribe;
+        fetchMessages();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel('public:messages')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `user_id=eq.${user.id}`
+            }, (payload) => {
+                setMessages(prev => [...prev, payload.new as Message]);
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [user]);
 
     const sendMessage = async () => {
@@ -47,20 +60,20 @@ const ChatScreen = () => {
         setInputText('');
 
         try {
-            await addDoc(collection(db, 'messages'), {
-                userId: user.uid,
+            await supabase.from('messages').insert({
+                user_id: user.id,
                 text: userMessage,
                 sender: 'user',
-                timestamp: Timestamp.now(),
+                timestamp: new Date().toISOString(),
             });
 
             // Simulate AI response for now
             setTimeout(async () => {
-                await addDoc(collection(db, 'messages'), {
-                    userId: user.uid,
+                await supabase.from('messages').insert({
+                    user_id: user.id,
                     text: `I'm here to listen. You mentioned: "${userMessage}". How does that make you feel?`,
                     sender: 'ai',
-                    timestamp: Timestamp.now(),
+                    timestamp: new Date().toISOString(),
                 });
             }, 1000);
 

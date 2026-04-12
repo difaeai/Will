@@ -3,8 +3,7 @@ import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Modal } 
 import { GradientBackground } from '../../components/common/GradientBackground';
 import { COLORS, SIZES, SPACING, RADIUS } from '../../constants/theme';
 import { Plus, MessageSquare, Heart } from 'lucide-react-native';
-import { db } from '../../config/firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 
 interface Post {
@@ -23,24 +22,38 @@ const CommunityScreen = () => {
     const [selectedMood, setSelectedMood] = useState('Neutral');
 
     useEffect(() => {
-        const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const items: Post[] = [];
-            snapshot.forEach((doc) => {
-                items.push({ id: doc.id, ...doc.data() } as Post);
-            });
-            setPosts(items);
-        });
-        return unsubscribe;
+        // Fetch posts
+        const fetchPosts = async () => {
+            const { data, error } = await supabase
+                .from('posts')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (data) setPosts(data);
+        };
+
+        fetchPosts();
+
+        // Real-time subscription
+        const channel = supabase
+            .channel('public:posts')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
+                setPosts(prev => [payload.new as Post, ...prev]);
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const createPost = async () => {
-        if (newPostContent.trim() === '') return;
+        if (newPostContent.trim() === '' || !user) return;
         try {
-            await addDoc(collection(db, 'posts'), {
+            await supabase.from('posts').insert({
+                user_id: user.id,
                 content: newPostContent,
                 mood: selectedMood,
-                timestamp: Timestamp.now(),
                 likes: 0,
                 anonymous: true,
             });
