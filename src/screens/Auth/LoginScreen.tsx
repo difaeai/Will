@@ -10,25 +10,39 @@ const LoginScreen = ({ navigation }: any) => {
     const [isLogin, setIsLogin] = useState(true);
 
     const handleAuth = async () => {
-        if (!email || !password) return;
+        if (!email || !password) {
+            alert("Please enter both email and password");
+            return;
+        }
+        
         try {
             if (isLogin) {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
             } else {
-                const { data: { user }, error } = await supabase.auth.signUp({ email, password });
+                const { data, error } = await supabase.auth.signUp({ email, password });
                 if (error) throw error;
-                if (user) {
+                
+                if (data.user && data.user.identities && data.user.identities.length === 0) {
+                    alert("This email is already registered. Please login.");
+                    return;
+                }
+                
+                if (data.session === null) {
+                    alert("Success! Please check your email inbox to verify your account.");
+                    return;
+                }
+
+                if (data.user) {
                     await supabase.from('profiles').insert({
-                        id: user.id,
+                        id: data.user.id,
                         email,
                         subscription_status: 'free',
                     });
                 }
-                navigation.navigate('Onboarding');
             }
         } catch (error: any) {
-            Alert.alert("Auth Error", error.message);
+            alert("Error: " + error.message);
         }
     };
 

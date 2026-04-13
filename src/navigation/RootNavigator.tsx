@@ -15,7 +15,8 @@ import OnboardingScreen from '../screens/Auth/OnboardingScreen';
 import { COLORS } from '../constants/theme';
 import { Home, MessageCircle, Mic, Users, ShoppingBag, User } from 'lucide-react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
+import SplashScreen from '../screens/Auth/SplashScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -79,18 +80,14 @@ const NavigationContent = () => {
     const { user, loading, userData } = useAuth();
 
     if (loading) {
-        return (
-            <View style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center' }}>
-                <ActivityIndicator color={COLORS.primary} size="large" />
-            </View>
-        );
+        return <SplashScreen />;
     }
 
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             {!user ? (
                 <Stack.Screen name="Login" component={LoginScreen} />
-            ) : !userData?.onboardingComplete ? (
+            ) : !userData?.onboarding_complete ? (
                 <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             ) : (
                 <>
